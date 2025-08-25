@@ -26,7 +26,7 @@ pub trait Xcm {
 	/// # Returns
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
-	fn execute(&mut self, message: DynBytes, weight: Weight) -> DynBytes;
+	fn execute(&self, message: DynBytes, weight: Weight) -> DynBytes;
 
 	/// Initiate a new XCM query.
 	///
@@ -40,7 +40,7 @@ pub trait Xcm {
 	/// A unique query identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn newQuery(&mut self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId);
+	fn newQuery(&self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId);
 
 	/// Send an XCM from a given origin.
 	///
@@ -51,7 +51,7 @@ pub trait Xcm {
 	/// # Returns
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
-	fn send(&mut self, destination: DynBytes, message: DynBytes) -> DynBytes;
+	fn send(&self, destination: DynBytes, message: DynBytes) -> DynBytes;
 }
 
 /// The XCM precompile offers a streamlined interface for messaging using Polkadot's Cross-Consensus
@@ -72,7 +72,7 @@ pub trait XcmCallback {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn newQuery(
-		&mut self,
+		&self,
 		responder: DynBytes,
 		timeout: BlockNumber,
 		callback: Callback,
@@ -95,7 +95,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&mut self, message: MessageId) -> DynBytes;
+	fn getResponse(&self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -110,7 +110,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn pollStatus(&mut self, message: MessageId) -> MessageStatus;
+	fn pollStatus(&self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -119,7 +119,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&mut self, message: MessageId);
+	fn remove(&self, message: MessageId);
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -129,7 +129,7 @@ pub trait Messaging {
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn removeMany(&mut self, messages: Vec<MessageId>);
+	fn removeMany(&self, messages: Vec<MessageId>);
 }
 
 /// Execute an XCM message from a local, signed, origin.
@@ -142,7 +142,7 @@ pub trait Messaging {
 /// A SCALE-encoded dispatch result.
 #[inline]
 pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Result<(), Error> {
-	let mut precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	let result = precompile.execute(DynBytes(message.encode()), weight);
 	Result::<(), ()>::decode(&mut result.0.as_slice())
 		.map_err(|_| Error::DecodingFailed)?
@@ -158,7 +158,7 @@ pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Res
 /// - `message` - The message identifier.
 #[inline]
 pub fn get_response(message: MessageId) -> DynBytes {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -191,11 +191,11 @@ pub fn new_query(
 	let responder = DynBytes(responder.encode());
 	match callback {
 		None => {
-			let mut precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.newQuery(responder, timeout)
 		},
 		Some(callback) => {
-			let mut precompile: contract_ref!(XcmCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(XcmCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.newQuery(responder, timeout, callback)
 		},
 	}
@@ -207,7 +207,7 @@ pub fn new_query(
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -219,7 +219,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -231,7 +231,7 @@ pub fn remove(message: MessageId) {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.removeMany(messages)
 }
 
@@ -248,7 +248,7 @@ pub fn send<Call: Encode>(
 	destination: VersionedLocation,
 	message: VersionedXcm<Call>,
 ) -> Result<(), Error> {
-	let mut precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	let result = precompile.send(DynBytes(destination.encode()), DynBytes(message.encode()));
 	Result::<(), ()>::decode(&mut result.0.as_slice())
 		.map_err(|_| Error::DecodingFailed)?
@@ -265,7 +265,7 @@ pub trait OnQueryResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onQueryResponse(&mut self, id: MessageId, response: DynBytes);
+	fn onQueryResponse(&self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a XCM query is completed.

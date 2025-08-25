@@ -35,7 +35,7 @@ pub mod fungibles {
 
 	impl Fungibles for Fungible {
 		#[ink(message)]
-		fn transfer(&mut self, token: TokenId, to: Address, value: U256) -> Result<(), Error> {
+		fn transfer(&self, token: TokenId, to: Address, value: U256) -> Result<(), Error> {
 			api::transfer(token, to, value)?;
 			self.env().emit_event(Transfer { from: self.env().address(), to, value });
 			Ok(())
@@ -43,7 +43,7 @@ pub mod fungibles {
 
 		#[ink(message)]
 		fn transferFrom(
-			&mut self,
+			&self,
 			token: TokenId,
 			from: Address,
 			to: Address,
@@ -55,7 +55,7 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn approve(&mut self, token: TokenId, spender: Address, value: U256) -> Result<(), Error> {
+		fn approve(&self, token: TokenId, spender: Address, value: U256) -> Result<(), Error> {
 			api::approve(token, spender, value)?;
 			self.env().emit_event(Approval { owner: self.env().address(), spender, value });
 			Ok(())
@@ -63,7 +63,7 @@ pub mod fungibles {
 
 		#[ink(message)]
 		fn increaseAllowance(
-			&mut self,
+			&self,
 			token: TokenId,
 			spender: Address,
 			value: U256,
@@ -73,7 +73,7 @@ pub mod fungibles {
 
 		#[ink(message)]
 		fn decreaseAllowance(
-			&mut self,
+			&self,
 			token: TokenId,
 			spender: Address,
 			value: U256,
@@ -82,7 +82,7 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn create(&mut self, admin: Address, min_balance: U256) -> Result<TokenId, Error> {
+		fn create(&self, admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 			let token = api::create(admin, min_balance)?;
 			self.env()
 				.emit_event(Created { id: token, creator: self.env().address(), admin });
@@ -90,7 +90,7 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn startDestroy(&mut self, token: TokenId) -> Result<(), Error> {
+		fn startDestroy(&self, token: TokenId) -> Result<(), Error> {
 			api::start_destroy(token)?;
 			self.env().emit_event(DestroyStarted { token });
 			Ok(())
@@ -98,7 +98,7 @@ pub mod fungibles {
 
 		#[ink(message)]
 		fn setMetadata(
-			&mut self,
+			&self,
 			token: TokenId,
 			name: String,
 			symbol: String,
@@ -110,19 +110,19 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn clearMetadata(&mut self, token: TokenId) -> Result<(), Error> {
+		fn clearMetadata(&self, token: TokenId) -> Result<(), Error> {
 			api::clear_metadata(token)?;
 			self.env().emit_event(MetadataCleared { token });
 			Ok(())
 		}
 
 		#[ink(message)]
-		fn mint(&mut self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+		fn mint(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
 			api::mint(token, account, value)
 		}
 
 		#[ink(message)]
-		fn burn(&mut self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+		fn burn(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
 			api::burn(token, account, value)
 		}
 

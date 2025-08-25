@@ -23,7 +23,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn get(&mut self, request: Get, fee: U256) -> Result<MessageId, Error>;
+	fn get(&self, request: Get, fee: U256) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Post` request.
 	///
@@ -36,7 +36,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn post(&mut self, request: Post, fee: U256) -> Result<MessageId, Error>;
+	fn post(&self, request: Post, fee: U256) -> Result<MessageId, Error>;
 }
 
 /// The ISMP precompile offers a streamlined interface for messaging using the Interoperable State
@@ -53,7 +53,7 @@ pub trait IsmpCallback {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn get(&mut self, request: Get, fee: U256, callback: Callback) -> Result<MessageId, Error>;
+	fn get(&self, request: Get, fee: U256, callback: Callback) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Post` request.
 	///
@@ -67,7 +67,7 @@ pub trait IsmpCallback {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn post(&mut self, request: Post, fee: U256, callback: Callback) -> Result<MessageId, Error>;
+	fn post(&self, request: Post, fee: U256, callback: Callback) -> Result<MessageId, Error>;
 }
 
 /// The messaging interface of the ISMP precompile offers a general interface for cross-chain
@@ -86,7 +86,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&mut self, message: MessageId) -> DynBytes;
+	fn getResponse(&self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -101,7 +101,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn pollStatus(&mut self, message: MessageId) -> MessageStatus;
+	fn pollStatus(&self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -110,7 +110,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&mut self, message: MessageId) -> Result<(), Error>;
+	fn remove(&self, message: MessageId) -> Result<(), Error>;
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -120,7 +120,7 @@ pub trait Messaging {
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn removeMany(&mut self, messages: Vec<MessageId>) -> Result<(), Error>;
+	fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// Submit a new ISMP `Get` request.
@@ -136,11 +136,11 @@ pub trait Messaging {
 pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	match callback {
 		None => {
-			let mut precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.get(request, fee)
 		},
 		Some(callback) => {
-			let mut precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.get(request, fee, callback)
 		},
 	}
@@ -155,7 +155,7 @@ pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<Messag
 /// - `message` - The message identifier.
 #[inline]
 pub fn get_response(message: MessageId) -> DynBytes {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -174,7 +174,7 @@ pub fn id() -> u32 {
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -193,11 +193,11 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	match callback {
 		None => {
-			let mut precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.post(request, fee)
 		},
 		Some(callback) => {
-			let mut precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.post(request, fee, callback)
 		},
 	}
@@ -211,7 +211,7 @@ pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<Mess
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) -> Result<(), Error> {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -223,7 +223,7 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
-	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.removeMany(messages)
 }
 
@@ -310,7 +310,7 @@ pub trait OnGetResponse {
 	/// - `response` - The values derived from the state proof.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>);
+	fn onGetResponse(&self, id: MessageId, response: Vec<StorageValue>);
 }
 
 /// A callback for handling responses to ISMP `Post` requests.
@@ -323,7 +323,7 @@ pub trait OnPostResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onPostResponse(&mut self, id: MessageId, response: DynBytes);
+	fn onPostResponse(&self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a ISMP `Get` request is completed.

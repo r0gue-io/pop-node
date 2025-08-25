@@ -34,7 +34,7 @@ pub mod messaging {
 
 	impl api::Messaging for Messaging {
 		#[ink(message)]
-		fn getResponse(&mut self, message: MessageId) -> DynBytes {
+		fn getResponse(&self, message: MessageId) -> DynBytes {
 			api::get_response(message)
 		}
 
@@ -44,19 +44,19 @@ pub mod messaging {
 		}
 
 		#[ink(message)]
-		fn pollStatus(&mut self, message: MessageId) -> MessageStatus {
+		fn pollStatus(&self, message: MessageId) -> MessageStatus {
 			api::poll_status(message)
 		}
 
 		#[ink(message)]
-		fn remove(&mut self, message: MessageId) -> Result<(), Error> {
+		fn remove(&self, message: MessageId) -> Result<(), Error> {
 			api::remove(message)?;
 			self.responses.remove(&message);
 			Ok(())
 		}
 
 		#[ink(message)]
-		fn removeMany(&mut self, messages: Vec<MessageId>) -> Result<(), Error> {
+		fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error> {
 			for message in &messages {
 				self.responses.remove(message);
 			}
@@ -67,12 +67,12 @@ pub mod messaging {
 
 	impl Ismp for Messaging {
 		#[ink(message)]
-		fn get(&mut self, request: Get, fee: U256) -> Result<MessageId, ismp::Error> {
+		fn get(&self, request: Get, fee: U256) -> Result<MessageId, ismp::Error> {
 			ismp::get(request, fee, None)
 		}
 
 		#[ink(message)]
-		fn post(&mut self, request: Post, fee: U256) -> Result<MessageId, ismp::Error> {
+		fn post(&self, request: Post, fee: U256) -> Result<MessageId, ismp::Error> {
 			ismp::post(request, fee, None)
 		}
 	}
@@ -80,7 +80,7 @@ pub mod messaging {
 	impl IsmpCallback for Messaging {
 		#[ink(message)]
 		fn get(
-			&mut self,
+			&self,
 			request: Get,
 			fee: U256,
 			callback: Callback,
@@ -90,7 +90,7 @@ pub mod messaging {
 
 		#[ink(message)]
 		fn post(
-			&mut self,
+			&self,
 			request: Post,
 			fee: U256,
 			callback: Callback,
@@ -101,7 +101,7 @@ pub mod messaging {
 
 	impl OnGetResponse for Messaging {
 		#[ink(message)]
-		fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
+		fn onGetResponse(&self, id: MessageId, response: Vec<StorageValue>) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -112,7 +112,7 @@ pub mod messaging {
 
 	impl OnPostResponse for Messaging {
 		#[ink(message)]
-		fn onPostResponse(&mut self, id: MessageId, response: DynBytes) {
+		fn onPostResponse(&self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -123,20 +123,20 @@ pub mod messaging {
 
 	impl Xcm for Messaging {
 		#[ink(message)]
-		fn execute(&mut self, message: DynBytes, weight: Weight) -> DynBytes {
-			let mut precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
+		fn execute(&self, message: DynBytes, weight: Weight) -> DynBytes {
+			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.execute(message, weight)
 		}
 
 		#[ink(message)]
-		fn newQuery(&mut self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId) {
-			let mut precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
+		fn newQuery(&self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId) {
+			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.newQuery(responder, timeout)
 		}
 
 		#[ink(message)]
-		fn send(&mut self, destination: DynBytes, message: DynBytes) -> DynBytes {
-			let mut precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
+		fn send(&self, destination: DynBytes, message: DynBytes) -> DynBytes {
+			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.send(destination, message)
 		}
 	}
@@ -144,19 +144,19 @@ pub mod messaging {
 	impl XcmCallback for Messaging {
 		#[ink(message)]
 		fn newQuery(
-			&mut self,
+			&self,
 			responder: DynBytes,
 			timeout: BlockNumber,
 			callback: Callback,
 		) -> (MessageId, QueryId) {
-			let mut precompile: contract_ref!(XcmCallback, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
+			let precompile: contract_ref!(XcmCallback, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.newQuery(responder, timeout, callback)
 		}
 	}
 
 	impl OnQueryResponse for Messaging {
 		#[ink(message)]
-		fn onQueryResponse(&mut self, id: MessageId, response: DynBytes) {
+		fn onQueryResponse(&self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
