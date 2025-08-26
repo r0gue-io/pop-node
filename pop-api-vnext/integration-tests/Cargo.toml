@@ -8,7 +8,7 @@ version = "0.1.0"
 abi = "all"
 
 [build-dependencies]
-contract-build = { git = "https://github.com/use-ink/cargo-contract" }
+contract-build = { git = "https://github.com/use-ink/cargo-contract", tag = "v6.0.0-alpha.1" }
 
 [dev-dependencies]
 codec.workspace = true

@@ -1,6 +1,6 @@
 pub use errors::{Error, Error::*};
 pub use ink::xcm::prelude::{Location, VersionedLocation, VersionedResponse, VersionedXcm};
-use ink::{scale::Decode, Address, SolBytes};
+use ink::{scale::Decode, Address};
 
 use super::{super::v0::Callback, *};
 
@@ -26,7 +26,7 @@ pub trait Xcm {
 	/// # Returns
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
-	fn execute(&self, message: Bytes, weight: Weight) -> Bytes;
+	fn execute(&self, message: DynBytes, weight: Weight) -> DynBytes;
 
 	/// Initiate a new XCM query.
 	///
@@ -40,7 +40,7 @@ pub trait Xcm {
 	/// A unique query identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn newQuery(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId);
+	fn newQuery(&self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId);
 
 	/// Send an XCM from a given origin.
 	///
@@ -51,7 +51,7 @@ pub trait Xcm {
 	/// # Returns
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
-	fn send(&self, destination: Bytes, message: Bytes) -> Bytes;
+	fn send(&self, destination: DynBytes, message: DynBytes) -> DynBytes;
 }
 
 /// The XCM precompile offers a streamlined interface for messaging using Polkadot's Cross-Consensus
@@ -73,7 +73,7 @@ pub trait XcmCallback {
 	#[allow(non_snake_case)]
 	fn newQuery(
 		&self,
-		responder: Bytes,
+		responder: DynBytes,
 		timeout: BlockNumber,
 		callback: Callback,
 	) -> (MessageId, QueryId);
@@ -95,7 +95,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
+	fn getResponse(&self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -143,8 +143,8 @@ pub trait Messaging {
 #[inline]
 pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Result<(), Error> {
 	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	let result = precompile.execute(SolBytes(message.encode()), weight);
-	Result::<(), ()>::decode(&mut result.as_slice())
+	let result = precompile.execute(DynBytes(message.encode()), weight);
+	Result::<(), ()>::decode(&mut result.0.as_slice())
 		.map_err(|_| Error::DecodingFailed)?
 		.map_err(|_| Error::ExecutionFailed(result))
 }
@@ -157,7 +157,7 @@ pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Res
 /// # Parameters
 /// - `message` - The message identifier.
 #[inline]
-pub fn get_response(message: MessageId) -> Bytes {
+pub fn get_response(message: MessageId) -> DynBytes {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
@@ -188,7 +188,7 @@ pub fn new_query(
 	timeout: BlockNumber,
 	callback: Option<Callback>,
 ) -> (MessageId, QueryId) {
-	let responder = SolBytes(responder.encode());
+	let responder = DynBytes(responder.encode());
 	match callback {
 		None => {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
@@ -249,8 +249,8 @@ pub fn send<Call: Encode>(
 	message: VersionedXcm<Call>,
 ) -> Result<(), Error> {
 	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	let result = precompile.send(SolBytes(destination.encode()), SolBytes(message.encode()));
-	Result::<(), ()>::decode(&mut result.as_slice())
+	let result = precompile.send(DynBytes(destination.encode()), DynBytes(message.encode()));
+	Result::<(), ()>::decode(&mut result.0.as_slice())
 		.map_err(|_| Error::DecodingFailed)?
 		.map_err(|_| Error::SendingFailed(result))
 }
@@ -265,7 +265,7 @@ pub trait OnQueryResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onQueryResponse(&mut self, id: MessageId, response: Bytes);
+	fn onQueryResponse(&mut self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a XCM query is completed.
@@ -275,5 +275,5 @@ pub struct XcmCompleted {
 	#[ink(topic)]
 	pub id: MessageId,
 	/// The response message.
-	pub result: Bytes,
+	pub result: DynBytes,
 }

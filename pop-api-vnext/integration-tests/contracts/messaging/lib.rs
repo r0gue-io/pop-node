@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{abi::Sol, contract_ref, prelude::vec::Vec, storage::Mapping, U256};
+use ink::{abi::Sol, contract_ref, prelude::vec::Vec, sol::DynBytes, storage::Mapping, U256};
 use pop_api::{
 	messaging::{
 		self as api,
@@ -9,7 +9,7 @@ use pop_api::{
 			OnPostResponse, Post, StorageValue,
 		},
 		xcm::{self, OnQueryResponse, QueryId, Xcm, XcmCallback, XcmCompleted},
-		Bytes, Callback, Error, MessageId, MessageStatus, Weight,
+		Callback, Error, MessageId, MessageStatus, Weight,
 	},
 	Pop,
 };
@@ -34,7 +34,7 @@ pub mod messaging {
 
 	impl api::Messaging for Messaging {
 		#[ink(message)]
-		fn getResponse(&self, message: MessageId) -> Bytes {
+		fn getResponse(&self, message: MessageId) -> DynBytes {
 			api::get_response(message)
 		}
 
@@ -112,7 +112,7 @@ pub mod messaging {
 
 	impl OnPostResponse for Messaging {
 		#[ink(message)]
-		fn onPostResponse(&mut self, id: MessageId, response: Bytes) {
+		fn onPostResponse(&mut self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -123,19 +123,19 @@ pub mod messaging {
 
 	impl Xcm for Messaging {
 		#[ink(message)]
-		fn execute(&self, message: Bytes, weight: Weight) -> Bytes {
+		fn execute(&self, message: DynBytes, weight: Weight) -> DynBytes {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.execute(message, weight)
 		}
 
 		#[ink(message)]
-		fn newQuery(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId) {
+		fn newQuery(&self, responder: DynBytes, timeout: BlockNumber) -> (MessageId, QueryId) {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.newQuery(responder, timeout)
 		}
 
 		#[ink(message)]
-		fn send(&self, destination: Bytes, message: Bytes) -> Bytes {
+		fn send(&self, destination: DynBytes, message: DynBytes) -> DynBytes {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
 			precompile.send(destination, message)
 		}
@@ -145,7 +145,7 @@ pub mod messaging {
 		#[ink(message)]
 		fn newQuery(
 			&self,
-			responder: Bytes,
+			responder: DynBytes,
 			timeout: BlockNumber,
 			callback: Callback,
 		) -> (MessageId, QueryId) {
@@ -156,7 +156,7 @@ pub mod messaging {
 
 	impl OnQueryResponse for Messaging {
 		#[ink(message)]
-		fn onQueryResponse(&mut self, id: MessageId, response: Bytes) {
+		fn onQueryResponse(&mut self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -166,6 +166,7 @@ pub mod messaging {
 	}
 
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	enum Response {
 		IsmpGet(Vec<StorageValue>),
 		IsmpPost(Vec<u8>),

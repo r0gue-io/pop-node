@@ -2,7 +2,7 @@ use ink::scale::Encode;
 pub use v0::*;
 
 use super::{
-	contract_ref, fixed_address, BlockNumber, Bytes, MessageId, MessageStatus, Pop, Sol, Vec,
+	contract_ref, fixed_address, BlockNumber, DynBytes, MessageId, MessageStatus, Pop, Sol, Vec,
 	Weight,
 };
 

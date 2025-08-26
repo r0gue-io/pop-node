@@ -123,8 +123,6 @@ const ZERO_VALUE: [u8; 4] = sol_error_selector!("ZeroValue", ());
 
 #[test]
 fn error_decoding_works() {
-	use ink::SolBytes;
-
 	for (encoded, expected) in [
 		(
 			"7fdb06c50000000000000000000000000000000000000000000000000000000000000001",
@@ -143,7 +141,7 @@ fn error_decoding_works() {
 		("5f15618b", MinBalanceZero),
 		(
 			"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
-			Module { index: 255, error: SolBytes([255; 4]) },
+			Module { index: 255, error: FixedBytes([255; 4]) },
 		),
 		("9d7b369d", NoPermission),
 		("baf13b3f", NotLive),
@@ -174,7 +172,7 @@ fn error_decoding_works() {
 
 #[test]
 fn error_encoding_works() {
-	use ink::{SolBytes, SolEncode};
+	use ink::SolEncode;
 
 	for (result, expected) in [
 		(
@@ -191,7 +189,7 @@ fn error_encoding_works() {
 		),
 		(MinBalanceZero.encode(), "5f15618b"),
 		(
-			Module{ index: 255, error: SolBytes([255; 4]) }.encode(),
+			Module{ index: 255, error: FixedBytes([255; 4]) }.encode(),
 			"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
 		),
 		(NoPermission.encode(), "9d7b369d"),
@@ -222,7 +220,7 @@ fn error_encoding_works() {
 
 #[test]
 fn selectors_work() {
-	use ink::{SolBytes, SolEncode};
+	use ink::SolEncode;
 
 	for (encoded, expected) in [
 		(Error::Arithmetic(ArithmeticError::Overflow).encode()[..4].to_vec(), ARITHMETIC),
@@ -231,7 +229,7 @@ fn selectors_work() {
 		(Error::InsufficientBalance.encode(), INSUFFICIENT_BALANCE),
 		(Error::InvalidRecipient(Address::default()).encode()[..4].to_vec(), INVALID_RECIPIENT),
 		(Error::MinBalanceZero.encode(), MIN_BALANCE_ZERO),
-		(Error::Module { index: 255, error: SolBytes([255; 4]) }.encode()[..4].to_vec(), MODULE),
+		(Error::Module { index: 255, error: FixedBytes([255; 4]) }.encode()[..4].to_vec(), MODULE),
 		(Error::NoPermission.encode(), NO_PERMISSION),
 		(Error::NotLive.encode(), NOT_LIVE),
 		(Error::Token(TokenError::Unknown).encode()[..4].to_vec(), TOKEN),

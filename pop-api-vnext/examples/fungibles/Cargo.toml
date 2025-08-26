@@ -5,13 +5,13 @@ name = "fungibles"
 version = "0.1.0"
 
 [package.metadata.ink-lang]
-abi = "sol"
+abi = "all"
 
 [lib]
 path = "lib.rs"
 
 [dependencies]
-ink = { git = "https://github.com/use-ink/ink", default-features = false, features = [ "unstable-hostfn" ] }
+ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-alpha.1", default-features = false, features = [ "unstable-hostfn" ] }
 pop-api = { path = "../../../pop-api-vnext", default-features = false, features = [ "fungibles" ] }
 
 [dev-dependencies]

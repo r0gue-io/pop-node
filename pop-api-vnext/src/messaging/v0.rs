@@ -21,7 +21,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
+	fn getResponse(&self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -93,7 +93,7 @@ impl Callback {
 		Self {
 			destination,
 			encoding,
-			selector: SolBytes(selector.to_be_bytes()),
+			selector: FixedBytes(selector.to_be_bytes()),
 			gas_limit,
 			storage_deposit_limit,
 		}
@@ -143,7 +143,7 @@ pub struct Removed {
 /// # Parameters
 /// - `message` - The message identifier.
 #[inline]
-pub fn get_response(message: MessageId) -> Bytes {
+pub fn get_response(message: MessageId) -> DynBytes {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }

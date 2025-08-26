@@ -1,5 +1,5 @@
 pub use errors::{Error, Error::*};
-use ink::{Address, SolBytes};
+use ink::{sol::DynBytes, Address};
 
 use super::{super::v0::Callback, *};
 
@@ -86,7 +86,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
+	fn getResponse(&self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -154,7 +154,7 @@ pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<Messag
 /// # Parameters
 /// - `message` - The message identifier.
 #[inline]
-pub fn get_response(message: MessageId) -> Bytes {
+pub fn get_response(message: MessageId) -> DynBytes {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
@@ -238,9 +238,9 @@ pub struct Get {
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Some application-specific metadata relating to this request.
-	pub context: Bytes,
+	pub context: DynBytes,
 	/// Raw Storage keys that would be used to fetch the values from the counterparty.
-	pub keys: Vec<Bytes>,
+	pub keys: Vec<DynBytes>,
 }
 
 impl Get {
@@ -256,8 +256,8 @@ impl Get {
 		destination: u32,
 		height: u64,
 		timeout: u64,
-		context: Bytes,
-		keys: Vec<Bytes>,
+		context: DynBytes,
+		keys: Vec<DynBytes>,
 	) -> Self {
 		Self { destination, height, timeout, context, keys }
 	}
@@ -270,11 +270,11 @@ pub struct Post {
 	/// The destination state machine of this request.
 	pub destination: u32,
 	/// The receiving module identifier/contract address on the destination chain.
-	pub to: Bytes,
+	pub to: DynBytes,
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Encoded request data.
-	pub data: Bytes,
+	pub data: DynBytes,
 }
 
 impl Post {
@@ -285,8 +285,8 @@ impl Post {
 	/// - `to` - The receiving module identifier/contract address on the destination chain.
 	/// - `timeout` - Relative from the current timestamp at which this request expires in seconds.
 	/// - `data` - Encoded request data.
-	pub fn new(destination: u32, to: Bytes, timeout: u64, data: Vec<u8>) -> Self {
-		Self { destination, to, timeout, data: SolBytes(data) }
+	pub fn new(destination: u32, to: DynBytes, timeout: u64, data: Vec<u8>) -> Self {
+		Self { destination, to, timeout, data: DynBytes(data) }
 	}
 }
 
@@ -295,9 +295,9 @@ impl Post {
 #[derive(Clone, Debug, ink::SolDecode, ink::SolEncode)]
 pub struct StorageValue {
 	/// The request storage key.
-	pub key: Bytes,
+	pub key: DynBytes,
 	/// The verified value.
-	pub value: Option<Bytes>,
+	pub value: Option<DynBytes>,
 }
 
 /// A callback for handling responses to ISMP `Get` requests.
@@ -323,7 +323,7 @@ pub trait OnPostResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onPostResponse(&mut self, id: MessageId, response: Bytes);
+	fn onPostResponse(&mut self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a ISMP `Get` request is completed.
@@ -343,5 +343,5 @@ pub struct IsmpPostCompleted {
 	#[ink(topic)]
 	pub id: MessageId,
 	/// The response message.
-	pub response: Bytes,
+	pub response: DynBytes,
 }
