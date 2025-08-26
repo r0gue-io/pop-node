@@ -9951,17 +9951,26 @@ dependencies = [
 name = "pallet-api-vnext"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "frame-benchmarking 41.0.0",
  "frame-support 41.0.0",
  "frame-system 41.0.0",
+ "ismp",
+ "log",
  "pallet-assets 43.0.0",
  "pallet-balances 42.0.0",
+ "pallet-ismp",
  "pallet-revive 0.7.0",
  "pallet-timestamp 40.0.0",
+ "pallet-xcm 20.1.0",
  "parity-scale-codec",
  "scale-info",
  "sp-io 41.0.1 (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2506)",
+ "sp-runtime 42.0.0 (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2506)",
+ "staging-parachain-info 0.21.0",
+ "staging-xcm 17.0.0",
+ "staging-xcm-builder 21.0.0",
 ]
 
 [[package]]
@@ -15033,11 +15042,14 @@ dependencies = [
  "frame-support 41.0.0",
  "frame-system 41.0.0",
  "hex",
+ "ismp",
  "log",
  "pallet-api-vnext",
  "pallet-assets 43.0.0",
  "pallet-balances 42.0.0",
+ "pallet-ismp",
  "pallet-revive 0.7.0",
+ "pallet-xcm 20.1.0",
  "parity-scale-codec",
  "pop-api 0.1.0",
  "pop-primitives",
@@ -15045,6 +15057,8 @@ dependencies = [
  "pop-runtime-testnet",
  "sp-io 41.0.1 (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2506)",
  "sp-runtime 42.0.0 (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2506)",
+ "staging-xcm 17.0.0",
+ "staging-xcm-executor 20.0.0",
 ]
 
 [[package]]

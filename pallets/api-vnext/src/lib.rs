@@ -44,11 +44,12 @@ use {
 mod errors;
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+#[cfg(feature = "messaging")]
+pub mod messaging;
 #[cfg(test)]
 mod mock;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Assets<T, I> = pallet_assets::Pallet<T, I>;
 
 // A bare call to a contract.
@@ -214,6 +215,21 @@ impl<T: pallet_revive::Config> TryFrom<pallet_revive::Origin<T>> for Origin<T> {
 	}
 }
 
+#[cfg(test)]
+impl<T: frame_system::Config> From<(H160, T::AccountId)> for Origin<T> {
+	fn from((address, account): (H160, T::AccountId)) -> Self {
+		Self { address, account }
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: pallet_revive::Config> Origin<T> {
+	pub fn from_address(address: H160) -> Self {
+		let account = <T as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+		Self { address, account }
+	}
+}
+
 /// Creates a new `RuntimeOrigin` from an ['Origin'].
 pub fn to_runtime_origin<T: pallet_revive::Config>(
 	o: pallet_revive::Origin<T>,
@@ -246,6 +262,14 @@ impl<T: TryFrom<alloy::U256>> TryConvert<T> for alloy::U256 {
 	type Error = DispatchError;
 
 	fn try_convert(self) -> Result<T, Self::Error> {
+		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
+	}
+}
+
+impl TryConvert<u32> for usize {
+	type Error = DispatchError;
+
+	fn try_convert(self) -> Result<u32, Self::Error> {
 		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
 	}
 }

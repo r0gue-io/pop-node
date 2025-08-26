@@ -11,11 +11,13 @@ use pallet_revive::{
 };
 #[cfg(feature = "devnet")]
 use pop_runtime_devnet::{
-	AccountId, Assets, Balance, Revive, Runtime, RuntimeOrigin, System, UNIT,
+	AccountId, Assets, Balance, BlockNumber, Messaging, ParachainInfo, PolkadotXcm, Revive,
+	Runtime, RuntimeEvent, RuntimeOrigin, System, UNIT,
 };
 use sp_runtime::{BuildStorage, DispatchError};
 
 mod fungibles;
+mod messaging;
 
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 

@@ -3,16 +3,22 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::Contains;
+use frame_support::{
+	dispatch::PostDispatchInfo,
+	pallet_prelude::{DispatchResultWithPostInfo, EnsureOrigin, Pays},
+	parameter_types,
+	sp_runtime::DispatchError,
+	traits::Contains,
+};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
-use sp_core::ConstU8;
-use sp_runtime::DispatchError;
+use sp_core::{ConstU32, ConstU8};
 use versioning::*;
 
 use crate::{
 	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, Runtime, RuntimeCall,
+	fungibles, nonfungibles, AccountId, Balance, Balances, BlockNumber, DealWithFees, Ismp,
+	Runtime, RuntimeCall, RuntimeHoldReason, TransactionByteFee, H160,
 };
 
 mod versioning;
@@ -220,6 +226,145 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 
 impl pallet_api_vnext::fungibles::Config<TrustBackedAssetsInstance> for Runtime {
 	type WeightInfo = ();
+}
+
+mod messaging {
+	use pallet_api_vnext::messaging;
+	use pallet_xcm::Origin;
+	use xcm::latest::Location;
+
+	use super::*;
+	use crate::config::xcm::LocalOriginToLocation;
+
+	parameter_types! {
+			pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
+	}
+
+	impl messaging::Config for Runtime {
+		type CallbackExecutor = CallbackExecutor;
+		type FeeHandler = DealWithFees;
+		type Fungibles = Balances;
+		type IsmpDispatcher = Ismp;
+		type Keccak256 = Ismp;
+		type MaxContextLen = ConstU32<64>;
+		type MaxDataLen = ConstU32<512>;
+		type MaxKeyLen = ConstU32<8>;
+		type MaxKeys = ConstU32<10>;
+		type MaxRecipientLen = ConstU32<32>;
+		// TODO: size appropriately
+		type MaxRemovals = ConstU32<100>;
+		// TODO: ensure within the contract buffer bounds
+		type MaxResponseLen = ConstU32<512>;
+		type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
+		type OffChainByteFee = TransactionByteFee;
+		type OnChainByteFee = TransactionByteFee;
+		type OriginConverter = LocalOriginToLocation;
+		type RuntimeHoldReason = RuntimeHoldReason;
+		type WeightInfo = ();
+		type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
+		type Xcm = QueryHandler;
+		type XcmResponseOrigin = EnsureResponse;
+	}
+
+	pub struct CallbackExecutor;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
+		fn execute(
+			account: &AccountId,
+			contract: H160,
+			data: Vec<u8>,
+			gas_limit: Weight,
+			storage_deposit_limit: Balance,
+		) -> DispatchResultWithPostInfo {
+			use frame_support::dispatch::DispatchErrorWithPostInfo;
+			use pallet_revive::DepositLimit;
+
+			use crate::{Revive, RuntimeOrigin};
+
+			let mut output = Revive::bare_call(
+				RuntimeOrigin::signed(account.clone()),
+				contract,
+				Default::default(),
+				gas_limit,
+				DepositLimit::Balance(storage_deposit_limit),
+				data,
+			);
+
+			log::debug!(target: "pop-api", "callback weight consumed={:?}, weight required={:?}", output.gas_consumed, output.gas_required);
+			if let Ok(return_value) = &output.result {
+				let pallet_revive::ExecReturnValue { flags: _, data } = return_value;
+				log::debug!(target: "pop-api::extension", "return data={:?}", data);
+				if return_value.did_revert() {
+					output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
+				}
+			}
+
+			let post_info =
+				PostDispatchInfo { actual_weight: Some(output.gas_consumed), pays_fee: Pays::No };
+
+			output
+				.result
+				.map(|_| post_info)
+				.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
+		}
+
+		fn execution_weight() -> Weight {
+			use pallet_revive::WeightInfo;
+			<Runtime as pallet_revive::Config>::WeightInfo::call()
+		}
+	}
+	#[cfg(feature = "runtime-benchmarks")]
+	impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
+		/// A successfull callback is the most expensive case.
+		fn execute(
+			_account: &AccountId,
+			_contract: H160,
+			_data: Vec<u8>,
+			gas_limit: Weight,
+			_storage_deposit_limit: Balance,
+		) -> frame_support::dispatch::DispatchResultWithPostInfo {
+			DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(gas_limit / 2),
+				pays_fee: Pays::Yes,
+			})
+		}
+
+		fn execution_weight() -> sp_runtime::Weight {
+			Default::default()
+		}
+	}
+
+	pub struct EnsureResponse;
+	impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
+		type Success = Location;
+
+		fn try_origin(o: O) -> Result<Self::Success, O> {
+			o.into().and_then(|o| match o {
+				Origin::Response(location) => Ok(location),
+				r => Err(O::from(r)),
+			})
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn try_successful_origin() -> Result<O, ()> {
+			Ok(Origin::Response(Location { parents: 1, interior: xcm::latest::Junctions::Here })
+				.into())
+		}
+	}
+
+	pub struct QueryHandler;
+	impl messaging::transports::xcm::NotifyQueryHandler<Runtime> for QueryHandler {
+		type WeightInfo = pallet_xcm::Pallet<Runtime>;
+
+		fn new_notify_query(
+			responder: impl Into<Location>,
+			notify: messaging::Call<Runtime>,
+			timeout: BlockNumber,
+			match_querier: impl Into<Location>,
+		) -> u64 {
+			crate::PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
+		}
+	}
 }
 
 #[cfg(test)]

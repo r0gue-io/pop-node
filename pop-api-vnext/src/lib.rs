@@ -1,16 +1,31 @@
+//! The `pop-api` crate provides an API for smart contracts to interact with the Pop Network
+//! runtime.
+//!
+//! This crate abstracts away complexities to deliver a streamlined developer experience while
+//! supporting multiple API versions to ensure backward compatibility. It is designed with a focus
+//! on stability, future-proofing, and storage efficiency, allowing developers to easily integrate
+//! powerful runtime features into their contracts without unnecessary overhead.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::Address;
 pub use sol::{revert, SolErrorDecode};
 
-type Pop = ink::env::DefaultEnvironment;
+/// An index to a block.
+pub type BlockNumber = u32;
+/// The onchain environment provided by Pop.
+pub type Pop = ink::env::DefaultEnvironment;
 
 /// The various general errors which may occur.
 pub mod errors;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
-mod sol;
+/// APIs for cross-chain messaging.
+#[cfg(feature = "messaging")]
+pub mod messaging;
+/// Types and utilities for working with Solidity ABI encoding.
+pub mod sol;
 
 #[macro_export]
 macro_rules! ensure {
@@ -23,7 +38,7 @@ macro_rules! ensure {
 
 /// Calculates the address of a precompile at index `n`.
 #[inline]
-fn fixed_address(n: u16) -> Address {
+const fn fixed_address(n: u16) -> Address {
 	let shifted = (n as u32) << 16;
 
 	let suffix = shifted.to_be_bytes();
@@ -33,10 +48,11 @@ fn fixed_address(n: u16) -> Address {
 		address[i] = suffix[i - 16];
 		i = i + 1;
 	}
-	address.into()
+	ink::H160(address)
 }
 
 /// Calculates the address of a precompile at index `n` and with some additional prefix.
+#[cfg(feature = "fungibles")]
 #[inline]
 fn prefixed_address(n: u16, prefix: u32) -> Address {
 	let mut address = fixed_address(n);

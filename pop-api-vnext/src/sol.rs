@@ -1,4 +1,4 @@
-pub use ink::{abi::Sol, primitives::sol::SolErrorDecode, SolEncode};
+pub use ink::{abi::Sol, primitives::sol::SolErrorDecode, SolBytes, SolEncode};
 
 /// Reverts the current contract execution, rolling back any changes and returning the specified
 /// `error`.
@@ -18,7 +18,7 @@ pub(crate) trait PrecompileError: Sized {
 macro_rules! impl_sol_encoding_for_precompile {
     ($($type:ty),*) => {
         $(
-            impl SolErrorDecode for  $type {
+            impl ink::sol::SolErrorDecode for  $type {
                	fn decode(data: &[u8]) -> Result<Self, ink::sol::Error> {
                     use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
                     use ink::{prelude::string::String, sol_error_selector};
