@@ -9,9 +9,19 @@ use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	Timestamp, TransactionPayment,
+	config::assets::TrustBackedAssetsInstance, deposit, Balance, Balances, Perbill, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp, TransactionPayment,
 };
+
+type Erc20<const PREFIX: u16, I> =
+	pallet_api_vnext::fungibles::precompiles::erc20::v0::Erc20<PREFIX, Runtime, I>;
+type Fungibles<const FIXED: u16, I> =
+	pallet_api_vnext::fungibles::precompiles::v0::Fungibles<FIXED, Runtime, I>;
+type Ismp<const FIXED: u16> =
+	pallet_api_vnext::messaging::precompiles::ismp::v0::Ismp<FIXED, Runtime>;
+type Messaging<const FIXED: u16> =
+	pallet_api_vnext::messaging::precompiles::v0::Messaging<FIXED, Runtime>;
+type Xcm<const FIXED: u16> = pallet_api_vnext::messaging::precompiles::xcm::v0::Xcm<FIXED, Runtime>;
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -102,7 +112,18 @@ impl pallet_revive::Config for Runtime {
 	type NativeToEthRatio = NativeToEthRatio;
 	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
-	type Precompiles = ();
+	type Precompiles = (
+		// 1: `Fungibles` precompile v0 using `TrustBackedAssetsInstance` instances
+		Fungibles<1, TrustBackedAssetsInstance>,
+		// 2: `Erc20` precompile v0 using `TrustBackedAssetsInstance` instances
+		Erc20<2, TrustBackedAssetsInstance>,
+		// 3: `Messaging` precompile v0
+		Messaging<3>,
+		// 4: `Ismp` precompile v0
+		Ismp<4>,
+		// 5: `Xcm` precompile v0
+		Xcm<5>,
+	);
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -135,4 +156,83 @@ fn contracts_prevents_runtime_calls() {
 		TypeId::of::<<Runtime as pallet_contracts::Config>::CallFilter>(),
 		TypeId::of::<Nothing>()
 	);
+}
+
+#[cfg(test)]
+mod tests {
+	use frame_support::{assert_ok, traits::fungible::Mutate};
+	use pallet_api_vnext::fungibles::precompiles::{erc20::v0::IERC20, v0::IFungibles::*};
+	use pallet_revive::{
+		precompiles::alloy::{primitives, sol_types::SolCall},
+		AddressMapper,
+	};
+	use sp_core::{bytes::to_hex, H160};
+	use sp_keyring::Sr25519Keyring::{Alice, Bob};
+	use sp_runtime::Weight;
+
+	use super::*;
+	use crate::{Assets, Revive, RuntimeOrigin, System};
+
+	type AccountId32Mapper = pallet_revive::AccountId32Mapper<Runtime>;
+	type Asset = pallet_assets::Asset<Runtime, TrustBackedAssetsInstance>;
+	type NextAssetId = pallet_assets::NextAssetId<Runtime, TrustBackedAssetsInstance>;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let mut ext = sp_io::TestExternalities::new_empty();
+		ext.execute_with(|| {
+			System::set_block_number(1);
+			Balances::set_balance(&Alice.to_account_id(), 1_000 * UNIT);
+			Balances::set_balance(&Bob.to_account_id(), 1 * UNIT);
+			NextAssetId::put(1);
+		});
+		ext
+	}
+
+	#[test]
+	fn fungibles_precompiles_work() {
+		let caller = Alice.to_account_id();
+		let origin = RuntimeOrigin::signed(caller.clone());
+		let origin_addr = AccountId32Mapper::to_address(&caller);
+		let token = 1;
+		let fungibles_addr: H160 = Fungibles::<1, TrustBackedAssetsInstance>::address().into();
+		let erc20_addr: H160 = Erc20::<2, TrustBackedAssetsInstance>::address(token).into();
+		let total_supply: Balance = 10_000;
+		let gas_limit = Weight::from_parts(600_000_000, 10_000);
+		new_test_ext().execute_with(|| {
+			assert_ok!(Revive::map_account(origin.clone()));
+			assert_ok!(Revive::map_account(RuntimeOrigin::signed(Bob.to_account_id())));
+
+			// Create a token via fungibles precompile
+			println!("IFungibles precompile: {}", to_hex(&fungibles_addr.0, false));
+			let call =
+				createCall { admin: origin_addr.0.into(), minBalance: primitives::U256::from(1) }
+					.abi_encode();
+			println!("IFungibles.create: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, gas_limit, 0, call));
+			let asset_details = Asset::get(token).unwrap();
+			assert_eq!(asset_details.owner, caller);
+			assert_eq!(asset_details.admin, caller);
+
+			// Mint via fungibles precompile
+			let call = mintCall {
+				token,
+				account: origin_addr.0.into(),
+				value: primitives::U256::from(total_supply),
+			}
+			.abi_encode();
+			println!("IFungibles.mint: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, gas_limit, 0, call));
+
+			// Transfer via erc20 precompile
+			println!("IERC20 precompile: {}", to_hex(&erc20_addr.0, false));
+			let call = IERC20::transferCall {
+				to: AccountId32Mapper::to_address(&Bob.to_account_id()).0.into(),
+				value: primitives::U256::from(total_supply / 2),
+			}
+			.abi_encode();
+			println!("IERC20.transfer: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, gas_limit, 0, call));
+			assert_eq!(Assets::balance(token, &Bob.to_account_id()), total_supply / 2);
+		})
+	}
 }

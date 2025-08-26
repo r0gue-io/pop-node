@@ -1,0 +1,34 @@
+[package]
+description = "Enabling smart(er) contracts with the power of Polkadot"
+edition = "2021"
+license = "GPL-3.0-only"
+name = "pop-api"
+version = "0.1.0"
+
+[dependencies]
+base64 = { version = "0.22.1", default-features = false, features = [ "alloc" ] }
+ink = { git = "https://github.com/use-ink/ink", default-features = false, features = [ "unstable-hostfn" ] }
+pop-primitives = { path = "../primitives", default-features = false }
+
+[dev-dependencies]
+hex = { version = "0.4.3" }
+scale-info = { version = "2" }
+
+[lib]
+crate-type = [ "rlib" ]
+name = "pop_api"
+path = "src/lib.rs"
+
+[features]
+default = [ "std" ]
+fungibles = [  ]
+messaging = [  ]
+nonfungibles = [  ]
+std = [
+	"ink/std",
+	"pop-primitives/std",
+]
+
+[lints.rust.unexpected_cfgs]
+check-cfg = [ 'cfg(ink_abi, values("ink", "sol", "all"))' ]
+level = "warn"
