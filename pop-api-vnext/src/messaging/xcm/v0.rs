@@ -265,7 +265,7 @@ pub trait OnQueryResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onQueryResponse(&self, id: MessageId, response: DynBytes);
+	fn onQueryResponse(&mut self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a XCM query is completed.

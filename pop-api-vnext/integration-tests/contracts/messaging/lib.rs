@@ -101,7 +101,7 @@ pub mod messaging {
 
 	impl OnGetResponse for Messaging {
 		#[ink(message)]
-		fn onGetResponse(&self, id: MessageId, response: Vec<StorageValue>) {
+		fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -112,7 +112,7 @@ pub mod messaging {
 
 	impl OnPostResponse for Messaging {
 		#[ink(message)]
-		fn onPostResponse(&self, id: MessageId, response: DynBytes) {
+		fn onPostResponse(&mut self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
@@ -156,7 +156,7 @@ pub mod messaging {
 
 	impl OnQueryResponse for Messaging {
 		#[ink(message)]
-		fn onQueryResponse(&self, id: MessageId, response: DynBytes) {
+		fn onQueryResponse(&mut self, id: MessageId, response: DynBytes) {
 			// Adding state requires storage deposit limit to be defined on callback. Deposit is
 			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
 			// removes state, so adequate controls should be implemented by contract as desired.
