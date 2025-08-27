@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   # Cancel any in-progress jobs for the same pull request
@@ -53,20 +53,20 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Check Build
-        # TODO: restore runtime-benchmarks once revive benchmarks resolved
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,try-runtime
 
   check-ismp:
     needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: "./.github/actions/init"
+
       - name: Check Build with ISMP
-        # TODO: restore runtime-benchmarks once revive benchmarks resolved
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,runtime-benchmarks,try-runtime
 
   clippy:
     needs: lint
@@ -85,8 +85,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # TODO: restore runtime-benchmarks once revive benchmarks resolved
-          args: --release --locked --workspace --exclude integration-tests
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
 
   clippy-ismp:
     needs: lint
@@ -105,8 +104,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # TODO: restore runtime-benchmarks once revive benchmarks resolved
-          args: --release --locked --workspace --exclude integration-tests --features=ismp
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,ismp
 
   test:
     needs: lint
@@ -117,8 +115,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        # TODO: restore runtime-benchmarks once revive benchmarks resolved
-        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --exclude pop-api-vnext-integration-tests --features=runtime-benchmarks
 
   integration-tests:
     needs: lint
@@ -154,6 +151,19 @@ jobs:
 
       - name: Run API integration tests
         run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
+
+  api-vnext-integration-tests:
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: '--cfg ink_abi="all"'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run API integration tests
+        run: cargo test -p pop-api-vnext-integration-tests --release --locked
 
   api-tests:
     runs-on: ubuntu-latest
@@ -199,8 +209,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        # TODO: restore runtime-benchmarks once revive benchmarks resolved
-        run: cargo llvm-cov --features=try-runtime,ismp --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
+        run: cargo llvm-cov --features=runtime-benchmarks,try-runtime,ismp --workspace --exclude integration-tests --exclude pop-api-integration-tests --exclude pop-api-vnext-integration-tests --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4

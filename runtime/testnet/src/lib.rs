@@ -23,13 +23,12 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use codec::Encode;
 use config::system::ConsensusHook;
 use cumulus_pallet_parachain_system::RelayChainState;
 use cumulus_primitives_core::AggregateMessageOrigin;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
-	dispatch::{DispatchClass, DispatchInfo},
+	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
@@ -51,10 +50,7 @@ use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_nfts_sdk as pallet_nfts;
-use pallet_revive::{
-	evm::{runtime::EthExtra, H160},
-	AddressMapper,
-};
+use pallet_revive::{evm::H160, AddressMapper};
 use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
 use polkadot_runtime_common::SlowAdjustingFeeUpdate;
@@ -71,7 +67,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256, U256};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, Get, IdentifyAccount, TransactionExtension, Verify},
+	traits::{BlakeTwo256, Block as BlockT, Get, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -83,7 +79,7 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight};
 // XCM Imports
 use xcm::{latest::prelude::BodyId, VersionedAsset, VersionedLocation};
 
-use crate::config::{assets::TrustBackedAssetsInstance, system::RuntimeBlockWeights};
+use crate::config::system::RuntimeBlockWeights;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -714,25 +710,29 @@ impl_runtime_apis! {
 
 		fn eth_transact(tx: pallet_revive::evm::GenericTransaction) -> Result<pallet_revive::EthTransactInfo<Balance>, pallet_revive::EthTransactError>
 		{
-			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
+			use pallet_revive::{
+				codec::Encode, evm::runtime::EthExtra,
+				sp_runtime::traits::{TransactionExtension, Block as BlockT}
+			};
 
-			let tx_fee = |pallet_call, mut dispatch_info: DispatchInfo| {
-				let call = RuntimeCall::Revive(pallet_call);
-				dispatch_info.extension_weight = EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
-				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
+			let tx_fee = |pallet_call, mut dispatch_info: pallet_revive::DispatchInfo| {
+				let call =
+					<Self as pallet_revive::frame_system::Config>::RuntimeCall::from(pallet_call);
+				dispatch_info.extension_weight =
+					EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
 
-				pallet_transaction_payment::Pallet::<Runtime>::compute_fee(
+				let uxt: <Block as BlockT>::Extrinsic =
+					pallet_revive::sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
+
+				TransactionPayment::compute_fee(
 					uxt.encoded_size() as u32,
 					&dispatch_info,
 					0u32.into(),
 				)
 			};
 
-			Revive::bare_eth_transact(
-				tx,
-				blockweights.max_block,
-				tx_fee,
-			)
+			let blockweights = <Self as pallet_revive::frame_system::Config>::BlockWeights::get();
+			Revive::dry_run_eth_transact(tx, blockweights.max_block, tx_fee)
 		}
 
 		fn call(
@@ -743,6 +743,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance> {
+			Revive::prepare_dry_run(&origin);
 			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
@@ -763,6 +764,7 @@ impl_runtime_apis! {
 			salt: Option<[u8; 32]>,
 		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance>
 		{
+			Revive::prepare_dry_run(&origin);
 			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
@@ -787,6 +789,13 @@ impl_runtime_apis! {
 			)
 		}
 
+		fn get_storage_var_key(
+			address: pallet_revive::H160,
+			key: Vec<u8>
+		) -> pallet_revive::GetStorageResult {
+			Revive::get_storage_var_key(address, key)
+		}
+
 		fn get_storage(
 			address: H160,
 			key: [u8; 32],
@@ -799,20 +808,21 @@ impl_runtime_apis! {
 
 		fn trace_block(
 			block: Block,
-			config: pallet_revive::evm::TracerConfig
-		) -> Vec<(u32, pallet_revive::evm::CallTrace)> {
-			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Vec<(u32, pallet_revive::evm::Trace)> {
+			use pallet_revive::{sp_runtime::traits::Block, tracing::trace};
+			let mut tracer = Revive::evm_tracer(tracer_type);
 			let mut traces = vec![];
 			let (header, extrinsics) = block.deconstruct();
 
 			Executive::initialize_block(&header);
 			for (index, ext) in extrinsics.into_iter().enumerate() {
-				trace(&mut tracer, || {
+				let t = tracer.as_tracing();
+				trace(t, || {
 					let _ = Executive::apply_extrinsic(ext);
 				});
 
-				if let Some(tx_trace) = tracer.collect_traces().pop() {
+				if let Some(tx_trace) = tracer.collect_trace() {
 					traces.push((index as u32, tx_trace));
 				}
 			}
@@ -823,16 +833,17 @@ impl_runtime_apis! {
 		fn trace_tx(
 			block: Block,
 			tx_index: u32,
-			config: pallet_revive::evm::TracerConfig
-		) -> Option<pallet_revive::evm::CallTrace> {
-			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Option<pallet_revive::evm::Trace> {
+			use pallet_revive::{sp_runtime::traits::Block, tracing::trace};
+			let mut tracer = Revive::evm_tracer(tracer_type);
 			let (header, extrinsics) = block.deconstruct();
 
 			Executive::initialize_block(&header);
 			for (index, ext) in extrinsics.into_iter().enumerate() {
 				if index as u32 == tx_index {
-					trace(&mut tracer, || {
+					let t = tracer.as_tracing();
+					trace(t, || {
 						let _ = Executive::apply_extrinsic(ext);
 					});
 					break;
@@ -841,24 +852,25 @@ impl_runtime_apis! {
 				}
 			}
 
-			tracer.collect_traces().pop()
+			tracer.collect_trace()
 		}
 
 		fn trace_call(
 			tx: pallet_revive::evm::GenericTransaction,
-			config: pallet_revive::evm::TracerConfig)
-			-> Result<pallet_revive::evm::CallTrace, pallet_revive::EthTransactError>
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Result<pallet_revive::evm::Trace, pallet_revive::EthTransactError>
 		{
 			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
-			let result = trace(&mut tracer, || Self::eth_transact(tx));
+			let mut tracer = Revive::evm_tracer(tracer_type);
+			let t = tracer.as_tracing();
+			let result = trace(t, || Self::eth_transact(tx));
 
-			if let Some(trace) = tracer.collect_traces().pop() {
+			if let Some(trace) = tracer.collect_trace() {
 				Ok(trace)
 			} else if let Err(err) = result {
 				Err(err)
 			} else {
-				Ok(Default::default())
+				Ok(tracer.empty_trace())
 			}
 		}
 	}
@@ -1051,7 +1063,6 @@ fn metadata_api_implemented() {
 
 	use codec::Decode;
 	use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
-	const V16_UNSTABLE: u32 = u32::MAX;
 
 	fn assert<T: sp_api::runtime_decl_for_metadata::Metadata<Block>>() {
 		let opaque_meta: OpaqueMetadata = T::metadata();
@@ -1063,7 +1074,7 @@ fn metadata_api_implemented() {
 			panic!("Expected metadata V14");
 		};
 
-		assert_eq!(T::metadata_versions(), vec![14, 15, V16_UNSTABLE]);
+		assert_eq!(T::metadata_versions(), vec![14, 15, 16]);
 
 		let version = 15;
 		let opaque_meta = T::metadata_at_version(version).expect("V15 should exist");
@@ -1077,8 +1088,17 @@ fn metadata_api_implemented() {
 		assert!(!metadata.apis.is_empty());
 		assert!(!metadata.pallets.is_empty());
 
-		// Ensure metadata v16 is not provided.
-		assert!(T::metadata_at_version(16).is_none());
+		let version = 16;
+		let opaque_meta = T::metadata_at_version(version).expect("V16 should exist");
+		let prefixed_meta_bytes = opaque_meta.deref();
+		assert_eq!(prefixed_meta_bytes, Runtime::metadata_at_version(version).unwrap().deref());
+		let prefixed_meta = RuntimeMetadataPrefixed::decode(&mut &prefixed_meta_bytes[..]).unwrap();
+		// Ensure that we have the V16 variant.
+		let RuntimeMetadata::V16(metadata) = prefixed_meta.1 else {
+			panic!("Expected metadata V16");
+		};
+		assert!(!metadata.apis.is_empty());
+		assert!(!metadata.pallets.is_empty());
 	}
 	sp_io::TestExternalities::new_empty().execute_with(|| assert::<Runtime>());
 }

@@ -1,5 +1,3 @@
-#[cfg(not(feature = "std"))]
-use alloc::format;
 use alloc::vec::Vec;
 
 use parachains_common::AccountId;

@@ -13,4 +13,5 @@ path = "lib.rs"
 
 [features]
 default = [ "std" ]
+ink-as-dependency = [  ]
 std = [ "ink/std" ]

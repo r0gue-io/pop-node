@@ -1,6 +1,4 @@
 [toolchain]
-# Release of Rust 1.87.0 introduced issues on CI making tests involving instantiation of wasm smart contracts fail.
-# Pinning version to stable 1.86 until resolved.
-channel = "1.86"
+channel = "stable"
 components = [ "clippy", "llvm-tools-preview", "rust-src", "rustfmt" ]
 targets = [ "wasm32v1-none" ]

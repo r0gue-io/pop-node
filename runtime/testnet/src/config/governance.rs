@@ -51,7 +51,6 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
 	// Simple majority is disabled.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
 	// At least 3/4 of the council vote is needed.

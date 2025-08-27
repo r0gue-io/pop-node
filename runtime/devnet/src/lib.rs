@@ -22,7 +22,6 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use codec::Encode;
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::{RelayChainState, RelayNumberMonotonicallyIncreases};
 use cumulus_pallet_weight_reclaim::StorageWeightReclaim;
@@ -30,13 +29,16 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	derive_impl,
-	dispatch::{DispatchClass, DispatchInfo},
+	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible,
+		fungible::HoldConsideration,
+		tokens::{imbalance::ResolveTo, nonfungibles_v2::Inspect},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -64,9 +66,9 @@ use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use pop_runtime_common::{
 	deposit, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
-	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
-	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
-	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
+	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT,
+	MAX_POV_SIZE, MICRO_UNIT, MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION, UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
@@ -75,7 +77,7 @@ use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256, U256};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, TransactionExtension, Verify},
+	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -263,7 +265,7 @@ parameter_types! {
 	// `DeletionWeightLimit` and `DeletionQueueDepth` depend on those to parameterize
 	// the lazy contract deletion.
 	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+		BlockLength::max_with_normal_ratio(MAX_POV_SIZE, NORMAL_DISPATCH_RATIO);
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
@@ -383,12 +385,29 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICRO_UNIT;
+	pub Treasury: AccountId = PalletId(*b"py/trsry").into_account_truncating();
+}
+
+/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
+/// by implementing OnUnbalanced.
+pub struct DealWithFees;
+impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds(
+		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
+	) {
+		if let Some(mut fees) = fees_then_tips.next() {
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut fees);
+			}
+			ResolveTo::<Treasury, Balances>::on_unbalanced(fees);
+		}
+	}
 }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -421,6 +440,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
+	type RelayParentOffset = ConstU32<0>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
@@ -706,6 +726,10 @@ mod runtime {
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(151)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(152)]
+	pub type FungiblesvNext = pallet_api_vnext::fungibles::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(153)]
+	pub type Messaging = pallet_api_vnext::messaging::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -724,6 +748,8 @@ mod benches {
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[cumulus_pallet_weight_reclaim, WeightReclaim]
+		[pallet_api_vnext::fungibles, FungiblesvNext]
+		[pallet_api_vnext::messaging, Messaging]
 	);
 }
 
@@ -1038,25 +1064,29 @@ impl_runtime_apis! {
 
 		fn eth_transact(tx: pallet_revive::evm::GenericTransaction) -> Result<pallet_revive::EthTransactInfo<Balance>, pallet_revive::EthTransactError>
 		{
-			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
+			use pallet_revive::{
+				codec::Encode, evm::runtime::EthExtra,
+				sp_runtime::traits::{TransactionExtension, Block as BlockT}
+			};
 
-			let tx_fee = |pallet_call, mut dispatch_info: DispatchInfo| {
-				let call = RuntimeCall::Revive(pallet_call);
-				dispatch_info.extension_weight = EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
-				let uxt: UncheckedExtrinsic = generic::UncheckedExtrinsic::new_bare(call).into();
+			let tx_fee = |pallet_call, mut dispatch_info: pallet_revive::DispatchInfo| {
+				let call =
+					<Self as pallet_revive::frame_system::Config>::RuntimeCall::from(pallet_call);
+				dispatch_info.extension_weight =
+					EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
 
-				pallet_transaction_payment::Pallet::<Runtime>::compute_fee(
+				let uxt: <Block as BlockT>::Extrinsic =
+					pallet_revive::sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
+
+				TransactionPayment::compute_fee(
 					uxt.encoded_size() as u32,
 					&dispatch_info,
 					0u32.into(),
 				)
 			};
 
-			Revive::bare_eth_transact(
-				tx,
-				blockweights.max_block,
-				tx_fee,
-			)
+			let blockweights = <Self as pallet_revive::frame_system::Config>::BlockWeights::get();
+			Revive::dry_run_eth_transact(tx, blockweights.max_block, tx_fee)
 		}
 
 		fn call(
@@ -1067,6 +1097,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance> {
+			Revive::prepare_dry_run(&origin);
 			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
@@ -1087,6 +1118,7 @@ impl_runtime_apis! {
 			salt: Option<[u8; 32]>,
 		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance>
 		{
+			Revive::prepare_dry_run(&origin);
 			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
@@ -1111,6 +1143,13 @@ impl_runtime_apis! {
 			)
 		}
 
+		fn get_storage_var_key(
+			address: pallet_revive::H160,
+			key: Vec<u8>
+		) -> pallet_revive::GetStorageResult {
+			Revive::get_storage_var_key(address, key)
+		}
+
 		fn get_storage(
 			address: H160,
 			key: [u8; 32],
@@ -1123,20 +1162,21 @@ impl_runtime_apis! {
 
 		fn trace_block(
 			block: Block,
-			config: pallet_revive::evm::TracerConfig
-		) -> Vec<(u32, pallet_revive::evm::CallTrace)> {
-			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Vec<(u32, pallet_revive::evm::Trace)> {
+			use pallet_revive::{sp_runtime::traits::Block, tracing::trace};
+			let mut tracer = Revive::evm_tracer(tracer_type);
 			let mut traces = vec![];
 			let (header, extrinsics) = block.deconstruct();
 
 			Executive::initialize_block(&header);
 			for (index, ext) in extrinsics.into_iter().enumerate() {
-				trace(&mut tracer, || {
+				let t = tracer.as_tracing();
+				trace(t, || {
 					let _ = Executive::apply_extrinsic(ext);
 				});
 
-				if let Some(tx_trace) = tracer.collect_traces().pop() {
+				if let Some(tx_trace) = tracer.collect_trace() {
 					traces.push((index as u32, tx_trace));
 				}
 			}
@@ -1147,16 +1187,17 @@ impl_runtime_apis! {
 		fn trace_tx(
 			block: Block,
 			tx_index: u32,
-			config: pallet_revive::evm::TracerConfig
-		) -> Option<pallet_revive::evm::CallTrace> {
-			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Option<pallet_revive::evm::Trace> {
+			use pallet_revive::{sp_runtime::traits::Block, tracing::trace};
+			let mut tracer = Revive::evm_tracer(tracer_type);
 			let (header, extrinsics) = block.deconstruct();
 
 			Executive::initialize_block(&header);
 			for (index, ext) in extrinsics.into_iter().enumerate() {
 				if index as u32 == tx_index {
-					trace(&mut tracer, || {
+					let t = tracer.as_tracing();
+					trace(t, || {
 						let _ = Executive::apply_extrinsic(ext);
 					});
 					break;
@@ -1165,24 +1206,25 @@ impl_runtime_apis! {
 				}
 			}
 
-			tracer.collect_traces().pop()
+			tracer.collect_trace()
 		}
 
 		fn trace_call(
 			tx: pallet_revive::evm::GenericTransaction,
-			config: pallet_revive::evm::TracerConfig)
-			-> Result<pallet_revive::evm::CallTrace, pallet_revive::EthTransactError>
+			tracer_type: pallet_revive::evm::TracerType
+		) -> Result<pallet_revive::evm::Trace, pallet_revive::EthTransactError>
 		{
 			use pallet_revive::tracing::trace;
-			let mut tracer = config.build(Revive::evm_gas_from_weight);
-			let result = trace(&mut tracer, || Self::eth_transact(tx));
+			let mut tracer = Revive::evm_tracer(tracer_type);
+			let t = tracer.as_tracing();
+			let result = trace(t, || Self::eth_transact(tx));
 
-			if let Some(trace) = tracer.collect_traces().pop() {
+			if let Some(trace) = tracer.collect_trace() {
 				Ok(trace)
 			} else if let Err(err) = result {
 				Err(err)
 			} else {
-				Ok(Default::default())
+				Ok(tracer.empty_trace())
 			}
 		}
 	}

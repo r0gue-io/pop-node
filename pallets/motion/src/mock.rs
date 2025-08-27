@@ -74,7 +74,6 @@ impl pallet_collective::Config<CouncilCollective> for Test {
 
 impl pallet_motion::Config for Test {
 	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
 	type SimpleMajorityOrigin =
 		pallet_collective::EnsureProportionAtLeast<u64, CouncilCollective, 1, 2>;
 	type SuperMajorityOrigin =

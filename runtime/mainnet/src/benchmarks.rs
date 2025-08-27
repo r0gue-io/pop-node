@@ -6,6 +6,7 @@ use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
 use xcm::prelude::{
 	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Response,
+	WeightLimit,
 };
 use xcm_executor::traits::ConvertLocation;
 
@@ -208,8 +209,11 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 		Ok((origin, ticket, assets))
 	}
 
-	fn fee_asset() -> Result<Asset, BenchmarkError> {
-		Ok(Asset { id: AssetId(RelayLocation::get()), fun: Fungible(1_000_000 * UNIT) })
+	fn worst_case_for_trader() -> Result<(Asset, WeightLimit), BenchmarkError> {
+		Ok((
+			Asset { id: AssetId(RelayLocation::get()), fun: Fungible(1_000_000 * UNIT) },
+			WeightLimit::Limited(Weight::from_parts(5000, 5000)),
+		))
 	}
 
 	fn unlockable_asset() -> Result<(Location, Location, Asset), BenchmarkError> {

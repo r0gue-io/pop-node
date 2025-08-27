@@ -1,8 +1,19 @@
 name: Initialize
 description: This action initializes a runner for use in other actions.
 inputs:
+  cache:
+    description: Whether to enable Rust caching. Defaults to true.
+    default: "true"
+  cache-all-crates:
+    description: Whether all crates should be cached, or only dependent crates. Defaults to true.
+    default: "true"
+  cache-directories:
+    description: Additional non-workspace directories to be cached, separated by newlines.
+  cache-on-failure:
+    description: Cache even if the build fails. Defaults to false.
+    default: "true"
   cache-key:
-    description: "The key to be used for the cache"
+    description: An additional optional key to be added. Useful for jobs utilizing a matrix.
 
 runs:
   using: "composite"
@@ -25,8 +36,10 @@ runs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
     - name: Rust Cache
-      uses: Swatinem/rust-cache@v2.7.8
+      if: ${{ inputs.cache == 'true' }}
+      uses: Swatinem/rust-cache@v2.8.0
       with:
-        cache-on-failure: true
-        cache-all-crates: true
+        cache-all-crates: ${{ inputs.cache-all-crates }}
+        cache-directories: ${{ inputs.cache-directories }}
+        cache-on-failure: ${{ inputs.cache-on-failure }}
         key: ${{ inputs.cache-key }}

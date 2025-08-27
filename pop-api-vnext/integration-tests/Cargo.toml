@@ -1,0 +1,59 @@
+[package]
+build = "build.rs"
+edition = "2021"
+name = "pop-api-vnext-integration-tests"
+version = "0.1.0"
+
+[package.metadata.ink-lang]
+abi = "all"
+
+[build-dependencies]
+contract-build = { git = "https://github.com/use-ink/cargo-contract" }
+
+[dev-dependencies]
+codec.workspace = true
+env_logger.workspace = true
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+hex.workspace = true
+ismp.workspace = true
+log.workspace = true
+pallet-api-vnext = { workspace = true, default-features = false, features = [ "fungibles", "messaging" ] }
+pallet-assets = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+pallet-ismp = { workspace = true, default-features = false }
+pallet-revive = { workspace = true, default-features = false }
+pallet-xcm = { workspace = true, default-features = false }
+pop-api = { path = "../../pop-api-vnext", default-features = false, features = [ "fungibles", "messaging" ] }
+pop-primitives = { workspace = true, default-features = false }
+pop-runtime-devnet.workspace = true
+pop-runtime-testnet.workspace = true
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+xcm.workspace = true
+xcm-executor.workspace = true
+
+[features]
+default = [ "devnet", "std" ]
+devnet = [ "pop-runtime-devnet/default" ]
+std = [
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"ismp/std",
+	"pallet-api-vnext/std",
+	"pallet-assets/std",
+	"pallet-balances/std",
+	"pallet-ismp/std",
+	"pallet-revive/std",
+	"pallet-xcm/std",
+	"pop-api/std",
+	"pop-primitives/std",
+	"pop-runtime-devnet/std",
+	"pop-runtime-testnet/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"xcm-executor/std",
+	"xcm/std",
+]
+testnet = [ "pop-runtime-testnet/default" ]

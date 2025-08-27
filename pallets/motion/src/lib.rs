@@ -38,8 +38,6 @@ pub mod pallet {
 		type RuntimeCall: Parameter
 			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ GetDispatchInfo;
-		/// The runtime event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Origin that can act as `Root` origin if a collective has achieved a simple majority
 		/// consensus.
 		type SimpleMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;

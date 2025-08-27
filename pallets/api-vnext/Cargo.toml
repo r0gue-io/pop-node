@@ -1,0 +1,83 @@
+[package]
+authors.workspace = true
+description = "API pallet, enabling smart(er) contracts with the power of Polkadot"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "pallet-api-vnext"
+repository.workspace = true
+version = "0.1.0"
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow = { workspace = true, optional = true }
+base64.workspace = true
+codec.workspace = true
+frame-benchmarking.workspace = true
+frame-support.workspace = true
+frame-system.workspace = true
+ismp = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
+pallet-assets = { workspace = true, default-features = false, optional = true }
+pallet-balances = { workspace = true, default-features = false, optional = true }
+pallet-ismp = { workspace = true, optional = true }
+pallet-revive = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, optional = true }
+pallet-xcm = { workspace = true, optional = true }
+parachain-info = { workspace = true, optional = true }
+scale-info.workspace = true
+sp-io = { workspace = true, optional = true }
+sp-runtime = { workspace = true, optional = true }
+xcm = { workspace = true, optional = true }
+xcm-builder = { workspace = true, optional = true }
+
+[dev-dependencies]
+pallet-balances.workspace = true
+
+[features]
+default = [ "fungibles", "messaging", "std" ]
+fungibles = [ "dep:pallet-assets", "dep:pallet-balances" ]
+# Empty feature to satisfy clashes with ismp dependency during workspace builds using the "ismp" feature
+ismp = [ "dep:ismp" ]
+messaging = [
+	"dep:anyhow",
+	"dep:ismp",
+	"dep:log",
+	"dep:pallet-ismp",
+	"dep:pallet-xcm",
+	"dep:parachain-info",
+	"dep:sp-runtime",
+	"dep:xcm",
+	"dep:xcm-builder",
+]
+runtime-benchmarks = [
+	"dep:pallet-timestamp",
+	"dep:sp-io",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-assets/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
+]
+std = [
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"ismp?/std",
+	"pallet-assets?/std",
+	"pallet-balances/std",
+	"pallet-ismp?/std",
+	"pallet-revive/std",
+	"pallet-timestamp/std",
+	"pallet-xcm?/std",
+	"parachain-info?/std",
+	"scale-info/std",
+	"sp-io/std",
+	"sp-runtime?/std",
+	"xcm-builder?/std",
+	"xcm?/std",
+]
