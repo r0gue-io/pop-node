@@ -18,10 +18,12 @@ use xcm::prelude::Location;
 
 use crate::{
 	config::{
-		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance}, monetary::TransactionByteFee, xcm::LocalOriginToLocation,
+		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+		monetary::TransactionByteFee,
+		xcm::LocalOriginToLocation,
 	},
-	fungibles, nonfungibles, AccountId, Balances, BlockNumber, Contracts, Ismp, PolkadotXcm, Runtime,
-	RuntimeCall, RuntimeHoldReason,
+	fungibles, nonfungibles, AccountId, Balances, BlockNumber, Contracts, Ismp, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeHoldReason,
 };
 
 mod versioning;
@@ -291,26 +293,27 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 		};
 
 		let contain_nonfungibles: bool =
-		{
-			use nonfungibles::Call::*;
-			matches!(
-				c,
-				RuntimeCall::NonFungibles(
-					approve { .. } |
-						transfer { .. } | create { .. } |
-						destroy { .. } | set_metadata { .. } |
-						clear_metadata { .. } | set_attribute { .. } |
-						clear_attribute { .. } |
-						set_max_supply { .. } | approve_item_attributes { .. } |
-						cancel_item_attributes_approval { .. } |
-						clear_all_transfer_approvals { .. } |
-						clear_collection_approvals { .. } |
-						mint { .. } | burn { .. },
+			{
+				use nonfungibles::Call::*;
+				matches!(
+					c,
+					RuntimeCall::NonFungibles(
+						approve { .. } |
+							transfer { .. } | create { .. } |
+							destroy { .. } | set_metadata { .. } |
+							clear_metadata { .. } | set_attribute { .. } |
+							clear_attribute { .. } |
+							set_max_supply { .. } | approve_item_attributes { .. } |
+							cancel_item_attributes_approval { .. } |
+							clear_all_transfer_approvals { .. } |
+							clear_collection_approvals { .. } |
+							mint { .. } | burn { .. },
+					)
 				)
-			)
-		};
+			};
 
-		T::BaseCallFilter::contains(c) && (contain_fungibles | contain_messaging | contain_nonfungibles)
+		T::BaseCallFilter::contains(c) &&
+			(contain_fungibles | contain_messaging | contain_nonfungibles)
 	}
 }
 
