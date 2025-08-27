@@ -18,9 +18,8 @@ use utils::*;
 
 mod fungibles;
 #[cfg(feature = "testnet")]
-mod messaging;
-#[cfg(feature = "devnet")]
-mod nonfungibles;
+pub mod messaging;
+pub mod nonfungibles;
 mod utils;
 
 type Balance = u128;

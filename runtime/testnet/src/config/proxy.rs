@@ -1,5 +1,4 @@
 use frame_support::traits::InstanceFilter;
-use pallet_nfts_sdk as pallet_nfts;
 use pop_runtime_common::proxy::{
 	AnnouncementDepositBase, AnnouncementDepositFactor, MaxPending, MaxProxies, ProxyDepositBase,
 	ProxyDepositFactor, ProxyType,

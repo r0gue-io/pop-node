@@ -46,10 +46,9 @@ use frame_system::{
 	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
 	CheckWeight, EnsureRoot,
 };
-use pallet_api::{fungibles, messaging};
+use pallet_api::{fungibles, messaging, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
-use pallet_nfts_sdk as pallet_nfts;
 use pallet_revive::{evm::H160, AddressMapper};
 use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
@@ -362,7 +361,7 @@ mod runtime {
 
 	// Assets
 	#[runtime::pallet_index(50)]
-	pub type Nfts = pallet_nfts::Pallet<Runtime>;
+	pub type Nfts = pallet_nfts::Pallet<Runtime, Instance1>;
 	#[runtime::pallet_index(51)]
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
@@ -371,6 +370,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(152)]
 	pub type Messaging = messaging::Pallet<Runtime>;
 }
