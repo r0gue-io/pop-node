@@ -15426,7 +15426,7 @@ dependencies = [
  "pallet-motion",
  "pallet-multisig 41.0.0",
  "pallet-nft-fractionalization",
- "pallet-nfts 35.0.0",
+ "pallet-nfts 34.1.0",
  "pallet-nfts-runtime-api 27.0.0",
  "pallet-preimage 41.0.0",
  "pallet-proxy 41.0.0",
