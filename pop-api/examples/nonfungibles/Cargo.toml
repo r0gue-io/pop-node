@@ -10,6 +10,12 @@ pop-api = { path = "../../../pop-api", default-features = false, features = [
 	"nonfungibles",
 ] }
 
+[dev-dependencies]
+drink = { package = "pop-drink", git = "https://github.com/r0gue-io/pop-drink", branch = "al3mart/chore-stable2503-4", features = [ "devnet" ] }
+env_logger = { version = "0.11.3" }
+pallet-nfts = { git = "https://github.com/r0gue-io/pop-node" }
+serde_json = "1.0.114"
+
 [lib]
 path = "lib.rs"
 
