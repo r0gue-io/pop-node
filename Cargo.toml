@@ -63,7 +63,7 @@ smallvec = "1.11.2"
 subxt = "0.41.0"
 subxt-signer = "0.41.0"
 tokio = { version = "1.45.0", features = [ "macros", "rt-multi-thread", "time" ] }
-tracing-subscriber = { version = "0.3.18", default-features = false }
+tracing-subscriber = { version = "0.3.20", default-features = false }
 
 # Build
 substrate-build-script-utils = { version = "11.0.0" }
