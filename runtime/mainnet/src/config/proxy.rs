@@ -11,7 +11,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Balances { .. }),
+			ProxyType::NonTransfer =>
+				!matches!(c, RuntimeCall::Balances { .. } | RuntimeCall::Revive { .. }),
 			ProxyType::CancelProxy => matches!(
 				c,
 				RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. }) |
