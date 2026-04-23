@@ -53,7 +53,7 @@ hex-literal = "0.4.1"
 impl-trait-for-tuples = "0.2.2"
 jsonrpsee = { version = "0.24.3", features = [ "server" ] }
 log = { version = "0.4.22", default-features = false }
-rand = "0.8.5"
+rand = "0.8.6"
 scale-info = { version = "2.11.6", default-features = false, features = [
 	"derive",
 ] }
